@@ -18,6 +18,8 @@ const postSchema = new mongoose.Schema({
     images: {
         type: [String],
         required: true
+        // data: Buffer,
+        // contentType: String
     },
     techTags: {
         type: [String],
@@ -71,4 +73,4 @@ const postSchema = new mongoose.Schema({
     }
 })
 
-export const Posts = module.model("Posts", postSchema, "posts")
+export const Post = mongoose.model("Post", postSchema, "posts")
