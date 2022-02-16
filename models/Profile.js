@@ -17,7 +17,7 @@ const profileSchema = new mongoose.Schema({
         type: [String],
         trim: true
     },
-    github: {
+    githubUserName: {
         type: String,
         trim: true
     },
