@@ -9,11 +9,13 @@ import { profilesRouter } from "./routers/profilesRouter.js"
 dotenv.config()
 
 const app = express()
-let PORT = 8000 || process.env.PORT
+let PORT = process.env.PORT || 8000
 
+// middleware
 app.use(express.json())
 app.use(cors())
 
+// mongodb connection
 mongo()
 
 app.get('/', (req, res) => {

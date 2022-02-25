@@ -6,12 +6,11 @@ export const auth = (req, res, next) => {
     if (!token) return res.status(401).send({ message: "Access Denied" });
 
     try {
-        const decoded = jwt.verify(token, process.env.SECRET_KEY);
-        req.user = decoded.user;
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);      //verifying jwt by getting token from request header
+        req.user = decoded.user;                                        //assigning user containing user.id to req.user
         next()
     }
     catch (err) {
-        console.log(err)
         res.status(401).send({ message: err })
     }
 }

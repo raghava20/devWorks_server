@@ -5,7 +5,7 @@ import { CloudinaryStorage } from "multer-storage-cloudinary"
 import dotenv from "dotenv"
 
 dotenv.config()
-cloudinary.config({
+cloudinary.config({                                                             //to access Cloudinary account
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
@@ -19,7 +19,7 @@ const storage = new CloudinaryStorage({
     }
 })
 
-export const upload = multer({
+export const upload = multer({                                      //using multer sending images files to cloudinary storage
     storage,
     fileFilter: function (req, file, callback) {
         var ext = path.extname(file.originalname);

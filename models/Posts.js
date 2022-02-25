@@ -17,8 +17,6 @@ const postSchema = new mongoose.Schema({
     images: {
         type: [String],
         required: true
-        // data: Buffer,
-        // contentType: String
     },
     techTags: {
         type: [String],

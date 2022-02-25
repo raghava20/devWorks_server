@@ -5,20 +5,20 @@ import { auth } from "../middleware/auth.js"
 
 let router = express.Router()
 
-// to create or update a profile //TODO: over
+// to create or update a profile
 router.post("/", [auth,
     [body("bio", "Bio field is required").not().isEmpty(),
-    body("skills", "Skills field is required").not().isEmpty()
+    body("skills", "Skills field is required").not().isEmpty()              //checking provided inputs are valid using express validator
     ]], async (req, res) => {
         const errors = validationResult(req)
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
 
-        const { user, bio, website, skills, githubUserName, location, twitter, linkedIn, github, codepen } = req.body;
+        const { bio, website, skills, location, twitter, linkedIn, github, codepen } = req.body;
         let profileGroup = {}
         profileGroup.user = req.user.id;
+
         if (bio) profileGroup.bio = bio;
         if (website) profileGroup.website = website;
-        if (githubUserName) profileGroup.githubUserName = githubUserName;
         if (location) profileGroup.location = location;
         if (skills) {
             profileGroup.skills = skills.split(',').map(skill => skill.trim());
@@ -30,11 +30,14 @@ router.post("/", [auth,
         if (codepen) profileGroup.social.codepen = codepen;
 
         try {
+            // checking existing profile and updating it
             const result = await Profile.findOne({ user: req.user.id })
-            if (result) {
+            if (result) {                                       //filtering             //assigning            //accessing
                 let existUser = await Profile.findOneAndUpdate({ user: req.user.id }, { $set: profileGroup }, { new: true })
                 return res.status(200).json(existUser)
             }
+
+            // for creating new profile
             let createProfile = new Profile(profileGroup)
             await createProfile.save()
             res.status(200).json(createProfile)
@@ -44,7 +47,7 @@ router.post("/", [auth,
         }
     })
 
-// to get the current users profile //TODO: over
+// to get the current users profile
 router.get("/me", auth, async (req, res) => {
     try {
         const result = await Profile.findOne({ user: req.user.id })
@@ -61,7 +64,7 @@ router.get("/me", auth, async (req, res) => {
     }
 })
 
-// to get all the user profiles //TODO: over
+// to get all the user profiles 
 router.get("/", async (req, res) => {
     try {
         const result = await Profile.find()
@@ -91,42 +94,28 @@ router.get("/user/:userID", async (req, res) => {
     }
 })
 
-// to get github profile by using githubUserName
-router.get("/github/:githubUserName", async (req, res) => {
-    try {
-        const apiURI = encodeURI(`https://api.github.com/users/${req.params.githubUserName}/repo?per_page=5&sort=created:asc`)
-        const response = await axios.get(apiURI, {
-            "user-agent": "node.js",
-            Authorization: `token ${process.env.GITHUB_CLIENT_ID}`
-        })
-        return res.json(response)
-    }
-    catch (err) {
-        return res.status(500).json({ message: "No Github profile found" })
-    }
-})
-
 // to follow another user
 router.put("/follow/:userID", auth, async (req, res) => {
     try {
         const existProfile = await Profile.findOne({ user: req.params.userID })
         if (!existProfile) return res.status(404).json({ message: "User not found" })
         if (req.user.id.toString() === req.params.userID) return res.status(400).json("Cannot follow yourself")
-        console.log(existProfile)
+
         // checking if user already follows
         if (existProfile.followers.filter(follow => follow.user.toString() === req.user.id).length > 0) {
             return res.status(403).json("Already following this user")
         }
 
         // then continue on following and followers func
-        // followers
+        // followers:
         await Profile.findOneAndUpdate({ user: req.params.userID }, {
-            $push: {
+            $push: {                                                    //push - to add the user id
                 followers: {
                     user: req.user.id
                 }
             }
         })
+        // following:
         await Profile.findOneAndUpdate({ user: req.user.id }, {
             $push: {
                 following: {
@@ -153,7 +142,7 @@ router.put("/unfollow/:userID", auth, async (req, res) => {
 
         // then continue doing unfollow action on followers and following functions
         await Profile.findOneAndUpdate({ user: req.params.userID }, {
-            $pull: {
+            $pull: {                                                        //pull - to remove the user id
                 followers: {
                     user: req.user.id
                 }

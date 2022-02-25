@@ -9,8 +9,8 @@ import { Profile } from '../models/Profile.js';
 let router = express.Router()
 
 
-// creating a post // TODO: over
-router.post("/", [auth, upload,
+// creating a post 
+router.post("/", [auth, upload,                                                     //upload- from cloudinary to store the image files
     [
         body("title").not().isEmpty(),
         body("techTags", "Atleast one tag is required").not().isEmpty(),
@@ -20,6 +20,7 @@ router.post("/", [auth, upload,
     const errors = validationResult(req)
     if (req.fileValidationError) errors.errors.push({ message: req.fileValidationError })
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+
     try {
         const { title, description, images, techTags, liveUrl, codeUrl } = req.body;
         const newPost = {}
@@ -35,15 +36,13 @@ router.post("/", [auth, upload,
         }
         if (techTags) {
             newPost.techTags = techTags.split(',').map(tag => tag.trim())
-            // newPost.techTags = techTags.map(tag => tag.trim())
         }
-        const result = new Post(newPost);
+        const result = new Post(newPost);                               //creating a new post using Post schema
         await result.save();
         res.json(result)
 
     }
     catch (err) {
-        console.log(err.message)
         return res.status(500).json({ message: err.message })
     }
 
@@ -52,8 +51,8 @@ router.post("/", [auth, upload,
 // get all posts
 router.get('/', auth, async (req, res) => {
     try {
-        const result = await Post.find().sort({ date: -1 }).populate("user", ["name", "avatar"])
-        return res.status(200).json(result)
+        const result = await Post.find().sort({ date: -1 }).populate("user", ["name", "avatar"])       //populate to get details from user schema
+        return res.status(200).json(result)                                                            //which is stored as ref in Post schema
     }
     catch (err) {
         return res.status(500).json({ message: err.message })
@@ -79,10 +78,10 @@ router.get("/feed", auth, async (req, res) => {
     }
 })
 
-// Get posts by the postID // TODO: over
+// Get posts by the postID 
 router.get("/:postID", auth, async (req, res) => {
     try {
-        const postById = await Post.findById(req.params.postID)
+        const postById = await Post.findById(req.params.postID)                 //populate the user details by using ref in Post schema
             .populate("user", ["name", "avatar"])
             .populate("likes.user", ["name", "avatar"])
             .populate("comments.user", ["name", "avatar"]);
@@ -90,20 +89,15 @@ router.get("/:postID", auth, async (req, res) => {
         return res.status(200).json(postById)
     }
     catch (err) {
-        if (err.kind == "ObjectId") {
-            return res.status(404).json({ msg: "Post not found" });
-        }
         return res.status(500).json({ message: err.message })
     }
 })
 
-// Get all posts by an user // FIXME: over
+// Get all posts by an user 
 router.get("/user/:userID", auth, async (req, res) => {
     try {
         const userPostsById = await Post.find({ user: req.params.userID }).populate("user", ["name", "avatar"])
-        console.log(userPostsById)
         if (!userPostsById) return res.status(404).json({ message: "Not found" })
-        console.log(userPostsById)
         return res.status(200).json(userPostsById)
     }
     catch (err) {
@@ -111,13 +105,13 @@ router.get("/user/:userID", auth, async (req, res) => {
     }
 })
 
-// delete post by Id // TODO: over
+// delete post by Id
 router.delete("/:postID", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.postID)
         if (!result) return res.status(404).json({ message: "Not found" })
         if (result.user.toString() !== req.user.id) return res.status(404).json({ message: "Unauthorized" })
-        await result.remove()
+        await result.remove()                           //removing the post after comparing it with valid user
         return res.status(200).json({ message: "Deleted Successfully" })
     }
     catch (err) {
@@ -130,6 +124,7 @@ router.put("/like/:id", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.id)
 
+        //to check the post is already liked or not
         if (result.likes.filter(like => like.user.toString() === req.user.id).length > 0) {
             return res.status(400).json({ message: "Post liked already" })
         }
@@ -147,6 +142,7 @@ router.put("/unlike/:id", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.id)
 
+        //to check the post is already unliked or not
         if (result.likes.filter(likes => likes.user.toString() === req.user.id).length === 0) {
             return res.status(400).json({ message: "Post has not been liked yet." })
         }
@@ -197,6 +193,7 @@ router.delete("/comment/:postID/:commentID", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.postID)
 
+        //checking the comment is already exists or not
         const comment = result.comments.find(comment => comment.id === req.params.commentID)
 
         if (!comment) {

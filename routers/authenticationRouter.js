@@ -8,6 +8,7 @@ import { auth } from "../middleware/auth.js"
 
 let router = express.Router()
 
+//auth to get user details after success login
 router.get("/auth", auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
@@ -24,7 +25,7 @@ router.post("/login", [
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
-    console.log("entry")
+
     try {
         const { email, password } = req.body;
         //checking user on DB
@@ -50,7 +51,7 @@ router.post("/login", [
 // signup router
 router.post("/signup", [
     body("name").not().isEmpty(),
-    body("email").isEmail(),
+    body("email").isEmail(),                            //checking provided inputs are valid using express validator
     body("password").isLength({ min: 6 })
 ], async (req, res) => {
     const errors = validationResult(req)
@@ -82,6 +83,8 @@ router.post("/signup", [
         })
         // saving user in DB
         const result = await newUser.save()
+
+        // generating token for signup also
         let payload = {
             user: { id: result._id }
         }

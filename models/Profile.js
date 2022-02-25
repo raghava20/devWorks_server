@@ -17,10 +17,6 @@ const profileSchema = new mongoose.Schema({
         type: [String],
         trim: true
     },
-    githubUserName: {
-        type: String,
-        trim: true
-    },
     location: {
         type: String,
         trim: true
