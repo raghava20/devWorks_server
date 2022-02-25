@@ -4,8 +4,18 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import { User } from "../models/Users.js"
 import gravatar from "gravatar"
+import { auth } from "../middleware/auth.js"
 
 let router = express.Router()
+
+router.get("/auth", auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        res.json(user);
+    } catch (err) {
+        return res.status(500).json({ message: err.message })
+    }
+});
 
 // Login router
 router.post("/login", [
@@ -14,7 +24,7 @@ router.post("/login", [
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
-
+    console.log("entry")
     try {
         const { email, password } = req.body;
         //checking user on DB
@@ -27,7 +37,7 @@ router.post("/login", [
 
         //generating token
         let payload = {
-            user: { id: existUser.id }
+            user: { id: existUser._id }
         }
         const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: "8hr" })
         res.status(200).json({ token })
@@ -71,7 +81,12 @@ router.post("/signup", [
             avatar: avatar
         })
         // saving user in DB
-        await newUser.save()
+        const result = await newUser.save()
+        let payload = {
+            user: { id: result._id }
+        }
+        const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: "8hr" })
+        res.status(200).json({ token })
     }
     catch (err) {
         return res.status(500).json({ message: err.message })

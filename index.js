@@ -8,8 +8,8 @@ import { profilesRouter } from "./routers/profilesRouter.js"
 
 dotenv.config()
 
-let app = express()
-let PORT = process.env.PORT || 8000
+const app = express()
+let PORT = 8000 || process.env.PORT
 
 app.use(express.json())
 app.use(cors())
@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 })
 
 app.use("/", authenticationRouter)
-app.use("/", postsRouter)
-app.use("/", profilesRouter)
+app.use("/posts", postsRouter)
+app.use("/profile", profilesRouter)
 
 app.listen(PORT, () => console.log("App is running on " + PORT))

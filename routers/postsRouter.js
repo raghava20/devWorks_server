@@ -2,14 +2,20 @@ import express from 'express';
 import { body, validationResult } from "express-validator"
 import { Post } from "../models/Posts.js"
 import { User } from "../models/Users.js"
+import { auth } from "../middleware/auth.js"
+import { upload } from "../middleware/cloudinary.js"
+import { Profile } from '../models/Profile.js';
 
 let router = express.Router()
 
-// creating a post
-router.post("/", [
-    body("title").not().isEmpty(),
-    body("techTags", "Atleast one tag is required").not().isEmpty(),
-    body("liveUrl").isURL().not().isEmpty()
+
+// creating a post // TODO: over
+router.post("/", [auth, upload,
+    [
+        body("title").not().isEmpty(),
+        body("techTags", "Atleast one tag is required").not().isEmpty(),
+        body("liveUrl").isURL().not().isEmpty()
+    ]
 ], async (req, res) => {
     const errors = validationResult(req)
     if (req.fileValidationError) errors.errors.push({ message: req.fileValidationError })
@@ -23,12 +29,13 @@ router.post("/", [
         if (liveUrl) newPost.liveUrl = liveUrl;
         if (codeUrl) newPost.codeUrl = codeUrl;
 
-        if (images) {
+        if (req.files) {
+            console.log(images)
             newPost.images = req.files.map(image => image.path)
         }
         if (techTags) {
-            // newPost.techTags = techTags.split(',').map(tag => tag.trim())
-            newPost.techTags = techTags.map(tag => tag.trim())
+            newPost.techTags = techTags.split(',').map(tag => tag.trim())
+            // newPost.techTags = techTags.map(tag => tag.trim())
         }
         const result = new Post(newPost);
         await result.save();
@@ -43,9 +50,9 @@ router.post("/", [
 })
 
 // get all posts
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
-        const result = await User.find().sort({ date: -1 }).populate("user", ["name,avatar"])
+        const result = await Post.find().sort({ date: -1 }).populate("user", ["name", "avatar"])
         return res.status(200).json(result)
     }
     catch (err) {
@@ -54,16 +61,16 @@ router.get('/', async (req, res) => {
 })
 
 // get all following users post
-router.get("/feed", async (req, res) => {
+router.get("/feed", auth, async (req, res) => {
     try {
-        const profile = await User.findOne({ user: req.user.id })
+        const profile = await Profile.findOne({ user: req.user.id })
 
         // to create array of user ID 
         const totalFollowingID = profile.following.map(follow => follow.user._id)
 
         const result = await Post.find({
             user: { $in: totalFollowingID }
-        }).sort({ date: -1 }).populate("user", ["name,avatar"])
+        }).sort({ date: -1 }).populate("user", ["name", "avatar"])
 
         return res.status(200).json(result)
     }
@@ -72,29 +79,31 @@ router.get("/feed", async (req, res) => {
     }
 })
 
-// Get posts by the postID
-router.get("/:postID", async (req, res) => {
+// Get posts by the postID // TODO: over
+router.get("/:postID", auth, async (req, res) => {
     try {
         const postById = await Post.findById(req.params.postID)
             .populate("user", ["name", "avatar"])
             .populate("likes.user", ["name", "avatar"])
             .populate("comments.user", ["name", "avatar"]);
-
-        if (!posts) return res.status(404).json({ message: "NOt found" })
+        if (!postById) return res.status(404).json({ message: "Not found" })
         return res.status(200).json(postById)
     }
     catch (err) {
+        if (err.kind == "ObjectId") {
+            return res.status(404).json({ msg: "Post not found" });
+        }
         return res.status(500).json({ message: err.message })
     }
 })
 
-// Get all posts by an user
-router.get("/user/:userID", async (req, res) => {
+// Get all posts by an user // FIXME: over
+router.get("/user/:userID", auth, async (req, res) => {
     try {
-        const userPostsById = await Post.find({ user: req.params.userID })
-            .populate("user", ["name", "avatar"])
+        const userPostsById = await Post.find({ user: req.params.userID }).populate("user", ["name", "avatar"])
+        console.log(userPostsById)
         if (!userPostsById) return res.status(404).json({ message: "Not found" })
-
+        console.log(userPostsById)
         return res.status(200).json(userPostsById)
     }
     catch (err) {
@@ -102,13 +111,13 @@ router.get("/user/:userID", async (req, res) => {
     }
 })
 
-// delete post by Id
-router.delete("/:postID", async (req, res) => {
+// delete post by Id // TODO: over
+router.delete("/:postID", auth, async (req, res) => {
     try {
-        const result = await Post.find(req.params.postID)
+        const result = await Post.findById(req.params.postID)
         if (!result) return res.status(404).json({ message: "Not found" })
         if (result.user.toString() !== req.user.id) return res.status(404).json({ message: "Unauthorized" })
-        await result.save()
+        await result.remove()
         return res.status(200).json({ message: "Deleted Successfully" })
     }
     catch (err) {
@@ -117,7 +126,7 @@ router.delete("/:postID", async (req, res) => {
 })
 
 // like post by Id
-router.put("/like/:id", async (req, res) => {
+router.put("/like/:id", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.id)
 
@@ -134,11 +143,11 @@ router.put("/like/:id", async (req, res) => {
 })
 
 // unlike post by Id
-router.put("/unlike/:id", async (req, res) => {
+router.put("/unlike/:id", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.id)
 
-        if (result.likes.filter(likes => likes.user.toString() === req.user.id).length > 0) {
+        if (result.likes.filter(likes => likes.user.toString() === req.user.id).length === 0) {
             return res.status(400).json({ message: "Post has not been liked yet." })
         }
 
@@ -156,34 +165,35 @@ router.put("/unlike/:id", async (req, res) => {
 })
 
 // add comment by id
-router.post("/comment/:postID", [
-    body("comment", "Add a comment").not().isEmpty()
-], async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+router.post("/comment/:postID", [auth,
+    [
+        body("text", "Add a comment").not().isEmpty()
+    ]], async (req, res) => {
+        const errors = validationResult(req)
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
 
-    try {
-        const post = await Post.findById(req.params.postID)
-        const user = await User.findById(req.user.id).select("name avatar")
+        try {
+            const post = await Post.findById(req.params.postID)
+            const user = await User.findById(req.user.id).select("name avatar")
 
-        const newComment = {
-            name: user.name,
-            avatar: user.avatar,
-            text: req.body.text,
-            userId: req.user.id
+            const newComment = {
+                name: user.name,
+                avatar: user.avatar,
+                text: req.body.text,
+                userId: req.user.id
+            }
+            post.comments.unshift(newComment)
+            await post.save()
+            return res.status(200).json(post.comments)
+
         }
-        post.comments.unshift(newComment)
-        await post.save()
-        return res.status(200).json(post.comments)
-
-    }
-    catch (err) {
-        return res.status(500).json({ message: err.message })
-    }
-})
+        catch (err) {
+            return res.status(500).json({ message: err.message })
+        }
+    })
 
 // delete comment by Id
-router.delete("/comment/:postID/:commentID", async (req, res) => {
+router.delete("/comment/:postID/:commentID", auth, async (req, res) => {
     try {
         const result = await Post.findById(req.params.postID)
 
@@ -192,12 +202,12 @@ router.delete("/comment/:postID/:commentID", async (req, res) => {
         if (!comment) {
             return res.status(404).json({ message: "Comment does not exist" })
         }
-        if (comment.userId !== req.user.id) {
+        if (comment.userId.toString() !== req.user.id) {
             return res.status(401).json({ message: "Unauthorized" })
         }
 
         // Remove comments on the post by userId
-        const removeIndex = comment.map(comment => comment.id).indexOf(req.user.id)
+        const removeIndex = result.comments.map(comment => comment.id).indexOf(req.user.id)
 
         result.comments.splice(removeIndex, 1)
         await result.save()

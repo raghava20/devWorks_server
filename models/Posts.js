@@ -12,8 +12,7 @@ const postSchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        trim: true,
-        required: true
+        trim: true
     },
     images: {
         type: [String],
@@ -30,8 +29,7 @@ const postSchema = new mongoose.Schema({
         required: true
     },
     codeUrl: {
-        type: String,
-        required: true
+        type: String
     },
     likes: [
         {
@@ -39,32 +37,33 @@ const postSchema = new mongoose.Schema({
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "User"
             }
-        },
+        }],
+    comments: [
         {
-            comments: [
-                {
-                    name: {
-                        type: String,
-                        required: true
-                    },
-                    userId: {
-                        type: mongoose.Schema.Types.ObjectId,
-                        required: true
-                    },
-                    avatar: {
-                        type: String,
-                        required: true
-                    },
-                    date: {
-                        type: Date,
-                        default: Date.now()
-                    },
-                    text: {
-                        type: String,
-                        required: true
-                    }
-                }
-            ]
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User"
+            },
+            name: {
+                type: String,
+                required: true
+            },
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                required: true
+            },
+            avatar: {
+                type: String,
+                required: true
+            },
+            date: {
+                type: Date,
+                default: Date.now()
+            },
+            text: {
+                type: String,
+                required: true
+            }
         }
     ],
     date: {
